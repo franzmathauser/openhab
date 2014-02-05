@@ -8,13 +8,18 @@
  */
 package org.openhab.binding.hue.internal.hardware;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 import org.openhab.binding.hue.internal.data.HueSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.jersey.api.client.AsyncWebResource;
+import com.sun.jersey.api.client.async.*;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
+import com.sun.jersey.api.client.GenericType;
 
 /**
  * The representation of a physical Hue bulb, providing control of the bulbs
@@ -230,16 +235,40 @@ public class HueBulb {
 	 */
 	private void executeMessage(String message) {
 		String targetURL = bridge.getUrl() + "lights/" + deviceNumber + "/state";
-		WebResource webResource = client.resource(targetURL);
-		ClientResponse response = webResource.type("application/json").put(
-				ClientResponse.class, message);
+		
+		ITypeListener<ClientResponse> iType = new ITypeListener<ClientResponse>(){
+
+			@Override
+			public void onComplete(Future<ClientResponse> f)
+					throws InterruptedException {
+				try {
+					ClientResponse response;
+					response = f.get();
+					if (f.isCancelled() || response.getStatus() != 200) {
+						logger.error("Failed to connect to Hue bridge: HTTP error code: "
+								+ response.getStatus());
+					}
+				} catch (ExecutionException e) {
+					logger.error("Failed to async connect to Hue bridge: Exception: " + e.getMessage());
+				}
+			}
+
+			@Override
+			public Class<ClientResponse> getType() {
+				return null;
+			}
+
+			@Override
+			public GenericType<ClientResponse> getGenericType() {
+				return null;
+			}
+			
+		};
+		
+		AsyncWebResource webResource = client.asyncResource(targetURL);
+		webResource.accept("application/json").put(iType,message);
 
 		logger.debug("Sent message: '" + message + "' to " + targetURL);
-
-		if (response.getStatus() != 200) {
-			logger.error("Failed to connect to Hue bridge: HTTP error code: "
-					+ response.getStatus());
-		}
 	}
 
 }

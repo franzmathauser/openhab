@@ -39,6 +39,7 @@ Import-Package: com.sun.jersey.api.core,
  org.slf4j
 DynamicImport-Package: *
 Export-Package: com.sun.jersey.api.client,
+ com.sun.jersey.api.client.async,
  com.sun.jersey.api.core,
  com.sun.jersey.api.core.servlet,
  com.sun.jersey.api.json,
